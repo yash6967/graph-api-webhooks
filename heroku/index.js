@@ -10,6 +10,7 @@ var bodyParser = require('body-parser');
 var express = require('express');
 var app = express();
 var xhub = require('express-x-hub');
+var request = require('request');
 
 app.set('port', (process.env.PORT || 5000));
 app.listen(app.get('port'));
@@ -54,8 +55,33 @@ app.post('/facebook', function(req, res) {
 app.post('/instagram', function(req, res) {
   console.log('Instagram request body:');
   console.log(req.body);
+
   // Process the Instagram updates here
   received_updates.unshift(req.body);
+
+  // Extract the message and sender ID from the request body
+  var message = req.body.entry[0].messaging[0].message.text;
+  var senderId = req.body.entry[0].messaging[0].sender.id;
+
+  // Send back the same message to the sender
+  var options = {
+    url: 'https://graph.facebook.com/v11.0/me/messages',
+    qs: { access_token: process.env.PAGE_ACCESS_TOKEN },
+    method: 'POST',
+    json: {
+      recipient: { id: senderId },
+      message: { text: message }
+    }
+  };
+
+  request(options, function(error, response, body) {
+    if (error) {
+      console.log('Error sending message:', error);
+    } else if (response.body.error) {
+      console.log('Error:', response.body.error);
+    }
+  });
+
   res.sendStatus(200);
 });
 
